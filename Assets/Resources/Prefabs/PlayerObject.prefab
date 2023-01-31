@@ -69,14 +69,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   canJump: 0
+  isCrouching: 0
   isSliding: 0
   isWallrunnning: 0
   isDashing: 0
   isSwinging: 0
-  baseSpeed: 10
-  crouchSpeed: 7
+  baseSpeed: 7
+  crouchSpeed: 5
   slideSpeed: 30
-  wallRunSpeed: 8.5
+  wallRunSpeed: 7.5
   dashSpeed: 20
   swingSpeed: 10
   playerHeight: 2

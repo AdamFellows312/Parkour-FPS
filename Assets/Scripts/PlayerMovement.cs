@@ -8,7 +8,7 @@ public class PlayerMovement : MonoBehaviour
 
     [HideInInspector] public bool canJump;
     private bool exitingSlope;
-    private bool isCrouching; // Begrudginly, because enums can't be used as conditionals in ternary operators :(
+    [HideInInspector] public bool isCrouching; // Begrudginly, because enums can't be used as conditionals in ternary operators :(
     [HideInInspector] public bool isSliding;
     [HideInInspector] public bool isWallrunnning;
     [HideInInspector] public bool isDashing;
@@ -308,7 +308,7 @@ public class PlayerMovement : MonoBehaviour
         exitingSlope = false;
     }
 
-    private bool IsGrounded()
+    public bool IsGrounded()
     {
         return Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, groundMask);
     }

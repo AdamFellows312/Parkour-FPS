@@ -31,7 +31,7 @@ public class GrapplePoint : MonoBehaviour
         // Destroy it if it exists and if this grapple point is not on screen
         if (!visibility.IsVisbile() && indicator != null)
         {
-            Invoke(nameof(DestroyIndicator), 0.5f);
+            Invoke(nameof(DestroyIndicator), 0.2f);
         }
 
         if (indicator != null)
@@ -47,6 +47,7 @@ public class GrapplePoint : MonoBehaviour
         indicator = Instantiate(grappleIndicator, transform.position, Quaternion.identity, transform);
         
         indicator.transform.GetChild(0).localScale = Vector3.zero;
+        indicator.transform.GetChild(0).gameObject.SetActive(true);
         // Have the indicator pop-up when it spawns
         indicator.transform.GetChild(0).DOScale(desiredIndicatorScale, 0.15f);
     }
