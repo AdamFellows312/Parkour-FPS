@@ -1,9 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening; // Using DOTween for easier implementation
 
 public class PlayerCamera : MonoBehaviour
 {
+    public static PlayerCamera instance;
+
     // Float values that store the camera's x and y rotation
     private float xRotation;
     private float yRotation;
@@ -15,6 +18,12 @@ public class PlayerCamera : MonoBehaviour
 
     [SerializeField] private Transform orientation;
     [SerializeField] private Transform targetCameraPosition;
+
+    // Called before Start() 
+    private void Awake()
+    {
+        if (instance == null) { instance = this; }
+    }
 
     // Called on the first frame before Update()
     private void Start()
@@ -34,10 +43,10 @@ public class PlayerCamera : MonoBehaviour
         MoveCamera();
 
         // Always go to the target position if the target trasnform is assigned
-        if (targetCameraPosition) { transform.parent.position = targetCameraPosition.position; }
+        if (targetCameraPosition) { transform.parent.parent.position = targetCameraPosition.position; }
 
         // Allow toggling of cursor visibility (because my escpe key is dead)
-        if (Input.GetKeyDown(KeyCode.T))
+        if (Input.GetKeyUp(KeyCode.T))
         {
             switch(Cursor.lockState)
             {
@@ -67,7 +76,20 @@ public class PlayerCamera : MonoBehaviour
         xRotation = Mathf.Clamp(xRotation, -90.0f, 90.0f);
 
         // Rotate the camera and the orientation
-        transform.rotation = Quaternion.Euler(xRotation, yRotation, 0.0f);
+        transform.parent.parent.rotation = Quaternion.Euler(xRotation, yRotation, 0.0f);
         orientation.rotation = Quaternion.Euler(0.0f, yRotation, 0.0f);
+    }
+
+    public void CameraFovChange(float endValue)
+    {
+        // Get the camera component on this object
+        Camera thisCamera = this.GetComponent<Camera>();
+        // Usin DOTween, change the FOV value of the camera to the end value
+        thisCamera.DOFieldOfView(endValue, 0.25f);
+    }
+
+    public void CameraTilt(float endTilt)
+    {
+        transform.parent.DOLocalRotate(new Vector3(0.0f, 0.0f, endTilt), 0.25f);
     }
 }

@@ -4,10 +4,13 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    private bool canJump;
-    private bool isCrouching; // Begrudginly, because enums can't be used as conditionals in ternary operators :(
+    public static PlayerMovement instance;
+
+    [HideInInspector] public bool canJump;
     private bool exitingSlope;
+    private bool isCrouching; // Begrudginly, because enums can't be used as conditionals in ternary operators :(
     [HideInInspector] public bool isSliding;
+    [HideInInspector] public bool isWallrunnning;
 
     private float horizontalInput;
     private float verticalInput;
@@ -17,7 +20,7 @@ public class PlayerMovement : MonoBehaviour
     private float desiredMovementSpeed;
     private float lastDesiredMoveSpeed;
 
-    private Rigidbody rigidbody;
+    private Rigidbody _rigidbody;
 
     private RaycastHit slopeHit;
 
@@ -26,6 +29,7 @@ public class PlayerMovement : MonoBehaviour
     public float baseSpeed = 7.0f;
     public float crouchSpeed = 3.5f;
     public float slideSpeed = 30.0f;
+    public float wallRunSpeed = 8.5f;
 
     [SerializeField] private float playerHeight = 2.0f;
     [SerializeField] private float groundDrag = 4.0f;
@@ -44,18 +48,24 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private Transform orientation;
     [Space(10)]
 
-    [SerializeField] private LayerMask groundMask;
+   public LayerMask groundMask;
     [Space(10)]
 
     public MovementState state;
-    public enum MovementState { grounded, airborne, crouching, sliding }
+    public enum MovementState { grounded, airborne, crouching, sliding, wallrunning }
+
+    // Called before Start() 
+    private void Awake()
+    {
+        if (instance == null) { instance = this; }
+    }
 
     // Called on the first frame before Update()
     private void Start()
     {
         // Get the player's Rigidbody
-        rigidbody = this.GetComponent<Rigidbody>();
-        rigidbody.freezeRotation = true;
+        _rigidbody = this.GetComponent<Rigidbody>();
+        _rigidbody.freezeRotation = true;
 
         // Store the initial Y scale of the player
         yScaleOriginal = transform.localScale.y;
@@ -72,8 +82,8 @@ public class PlayerMovement : MonoBehaviour
         LimitVelocity();
 
         // Update drag based on whether or not the player is grounded
-        if (IsGrounded()) { rigidbody.drag = groundDrag; }
-        else if (!IsGrounded()) { rigidbody.drag = 0.0f; }
+        if (IsGrounded()) { _rigidbody.drag = groundDrag; }
+        else if (!IsGrounded()) { _rigidbody.drag = 0.0f; }
     }
 
     // Called every fixed framerate update 
@@ -102,7 +112,7 @@ public class PlayerMovement : MonoBehaviour
             // Update the y scale of the player to be crouching
             transform.localScale = new Vector3(transform.localScale.x, yScaleCrouch, transform.localScale.z);
             // Add downwards force so the player isn't floating right after crouching
-            rigidbody.AddForce(Vector3.down * 5.0f, ForceMode.Impulse);
+            _rigidbody.AddForce(Vector3.down * 5.0f, ForceMode.Impulse);
         }
         // End crouching
         if (Input.GetKeyUp(KeyCode.LeftControl))
@@ -132,11 +142,15 @@ public class PlayerMovement : MonoBehaviour
             state = MovementState.sliding;
 
             // Update the desired move speed based on whether or not the player is sliding and on a slope
-            if (OnSlope() && rigidbody.velocity.y < 0.1f) { desiredMovementSpeed = slideSpeed; }
+            if (OnSlope() && _rigidbody.velocity.y < 0.1f) { desiredMovementSpeed = slideSpeed; }
             else { desiredMovementSpeed = baseSpeed; }
         }
-
-        // Deterine if crouching, if so appropriately update the state
+        // Update the state if is wallrunning
+        else if (isWallrunnning)
+        {
+            state = MovementState.wallrunning;
+        }
+        // Determine if crouching, if so appropriately update the state
         else if (Input.GetKey(KeyCode.LeftControl))
         {
             isCrouching = true;
@@ -166,32 +180,32 @@ public class PlayerMovement : MonoBehaviour
         movementDirection.Normalize();
 
         // Determine the correct movement speed
-        desiredMovementSpeed = isCrouching ? crouchSpeed : baseSpeed;
+        desiredMovementSpeed = isWallrunnning ? wallRunSpeed : isCrouching ? crouchSpeed : baseSpeed;
 
         if (OnSlope() && !exitingSlope)
         {
             // Apply a force in the direction (relative to the slope's incline) of the slope
-            rigidbody.AddForce(GetSlopeMoveDirection(movementDirection) * movementSpeed * 20.0f, ForceMode.Force);
+            _rigidbody.AddForce(GetSlopeMoveDirection(movementDirection) * movementSpeed * 20.0f, ForceMode.Force);
 
             // Compensate for removal of gravity while on a slope by adding a constant downwards force while moving up said slope
-            if (rigidbody.velocity.y > 0.0f)
+            if (_rigidbody.velocity.y > 0.0f)
             {
-                rigidbody.AddForce(Vector3.down * 80.0f, ForceMode.Force);
+                _rigidbody.AddForce(Vector3.down * 80.0f, ForceMode.Force);
             }
         }
         
         if (IsGrounded())
         {
             // Apply a force to move the player
-            rigidbody.AddForce(movementDirection * movementSpeed * 10.0f, ForceMode.Force);
+            _rigidbody.AddForce(movementDirection * movementSpeed * 10.0f, ForceMode.Force);
         }
         else if (!IsGrounded())
         {
-            rigidbody.AddForce(movementDirection * movementSpeed * 10.0f * airMultiplier, ForceMode.Force);
+            _rigidbody.AddForce(movementDirection * movementSpeed * 10.0f * airMultiplier, ForceMode.Force);
         }
 
-        // Remove gravity when on a slope (so the player doesn't slide down the slope)
-        rigidbody.useGravity = !OnSlope();
+        // Remove gravity when on a slope (so the player doesn't slide down the slope) and when not wallrunning
+        if (!isWallrunnning) { _rigidbody.useGravity = !OnSlope(); }
     }
 
     private void LimitVelocity()
@@ -199,23 +213,23 @@ public class PlayerMovement : MonoBehaviour
         // Limit velocity on the slope
         if (OnSlope() && !exitingSlope)
         {
-            if (rigidbody.velocity.magnitude > movementSpeed)
+            if (_rigidbody.velocity.magnitude > movementSpeed)
             {
-                rigidbody.velocity = rigidbody.velocity.normalized * movementSpeed;
+                _rigidbody.velocity = _rigidbody.velocity.normalized * movementSpeed;
             }
         }
         // Limiting the velocity in the air/on the ground
         else if (!OnSlope())
         {
             // Get the velocity as it is on a plane (no vertical velocity)
-            Vector3 flatVelocity = new Vector3(rigidbody.velocity.x, 0.0f, rigidbody.velocity.z);
+            Vector3 flatVelocity = new Vector3(_rigidbody.velocity.x, 0.0f, _rigidbody.velocity.z);
 
             // Limit the velocity if going over the max speed
             if (flatVelocity.magnitude > movementSpeed)
             {
                 Vector3 limitedVelocity = flatVelocity.normalized * movementSpeed;
                 // Apply the limited velocity to the player's rigidbody
-                rigidbody.velocity = new Vector3(limitedVelocity.x, rigidbody.velocity.y, limitedVelocity.z);
+                _rigidbody.velocity = new Vector3(limitedVelocity.x, _rigidbody.velocity.y, limitedVelocity.z);
             }
         }
     }
@@ -258,9 +272,9 @@ public class PlayerMovement : MonoBehaviour
         canJump = false;
 
         // Reset the y velocity
-        rigidbody.velocity = new Vector3(rigidbody.velocity.x, 0.0f, rigidbody.velocity.z);
+        _rigidbody.velocity = new Vector3(_rigidbody.velocity.x, 0.0f, _rigidbody.velocity.z);
         // Apply the jumping force
-        rigidbody.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        _rigidbody.AddForce(transform.up * jumpForce, ForceMode.Impulse);
     }
 
     private void ResetJump()
@@ -290,5 +304,10 @@ public class PlayerMovement : MonoBehaviour
     {
         // Retun the moveDirection vetor projected onto the slopes incline surface
         return Vector3.ProjectOnPlane(direction, slopeHit.normal).normalized;
+    }
+
+    public Rigidbody GetRigidbody()
+    {
+        return _rigidbody;
     }
 }

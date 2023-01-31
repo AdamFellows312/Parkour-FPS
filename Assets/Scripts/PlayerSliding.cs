@@ -9,8 +9,7 @@ public class PlayerSliding : MonoBehaviour
     private float slideTimer;
     private float yScaleOriginal;
 
-    private Rigidbody rigidbody;
-    private PlayerMovement movement;
+    private Rigidbody _rigidbody;
 
     [SerializeField] private float maxSlideTime = 0.75f;
     [SerializeField] private float slideForce = 200.0f;
@@ -20,11 +19,11 @@ public class PlayerSliding : MonoBehaviour
     [SerializeField] private Transform orientation;
     //[SerializeField] private Transform playerTransform;
 
+    // Called on the first frame before Update()
     private void Start()
     {
         // Get the player's Rigidbody
-        rigidbody = this.GetComponent<Rigidbody>();
-        movement = this.GetComponent<PlayerMovement>();
+        _rigidbody = PlayerMovement.instance.GetRigidbody();
 
         // Store the initial Y scale of the player
         yScaleOriginal = transform.localScale.y;
@@ -40,7 +39,7 @@ public class PlayerSliding : MonoBehaviour
     // Called every fixed framerate update 
     private void FixedUpdate()
     {
-        if (movement.isSliding) { SlidingMovement(); }
+        if (PlayerMovement.instance.isSliding) { SlidingMovement(); }
     }
 
     private void GetInput()
@@ -56,7 +55,7 @@ public class PlayerSliding : MonoBehaviour
         }
 
         // End Sliding
-        if (Input.GetKeyUp(KeyCode.LeftShift) && movement.isSliding)
+        if (Input.GetKeyUp(KeyCode.LeftShift) && PlayerMovement.instance.isSliding)
         {
             EndSlide();
         }
@@ -64,12 +63,12 @@ public class PlayerSliding : MonoBehaviour
 
     private void StartSlide()
     {
-        movement.isSliding = true;
+        PlayerMovement.instance.isSliding = true;
 
         // Shrink the player on y-axis to the slide scale
         transform.localScale = new Vector3(transform.localScale.x, yScaleSlide, transform.localScale.z);
         // Add downwards force so the player isn't floating right after crouching
-        rigidbody.AddForce(Vector3.down * 5.0f, ForceMode.Impulse);
+        _rigidbody.AddForce(Vector3.down * 5.0f, ForceMode.Impulse);
 
         // Reset the slide timer
         slideTimer = maxSlideTime;
@@ -78,7 +77,7 @@ public class PlayerSliding : MonoBehaviour
     private void EndSlide()
     {
         // No longer sliding
-        movement.isSliding = false;
+        PlayerMovement.instance.isSliding = false;
         // Reset the y scale of the player
         transform.localScale = new Vector3(transform.localScale.x, yScaleOriginal, transform.localScale.z);
     }
@@ -90,16 +89,16 @@ public class PlayerSliding : MonoBehaviour
         inputDirection.Normalize();
 
         // Normal sliding when not on a slope (or moving upwards)
-        if (!movement.OnSlope() || rigidbody.velocity.y > -0.1f)
+        if (!PlayerMovement.instance.OnSlope() || _rigidbody.velocity.y > -0.1f)
         {
             // Apply the slide force
-            rigidbody.AddForce(inputDirection * slideForce, ForceMode.Force);
+            _rigidbody.AddForce(inputDirection * slideForce, ForceMode.Force);
             // Decrease the slide timer
             slideTimer -= Time.deltaTime;
         }
         else
         {
-            rigidbody.AddForce(movement.GetSlopeMoveDirection(inputDirection) * slideForce, ForceMode.Force);
+            _rigidbody.AddForce(PlayerMovement.instance.GetSlopeMoveDirection(inputDirection) * slideForce, ForceMode.Force);
             // Not counting down the timer to allow a slide on a slope to last for an undefined duration
         }
 
