@@ -11,6 +11,8 @@ public class PlayerMovement : MonoBehaviour
     private bool isCrouching; // Begrudginly, because enums can't be used as conditionals in ternary operators :(
     [HideInInspector] public bool isSliding;
     [HideInInspector] public bool isWallrunnning;
+    [HideInInspector] public bool isDashing;
+    [HideInInspector] public bool isSwinging;
 
     private float horizontalInput;
     private float verticalInput;
@@ -30,11 +32,15 @@ public class PlayerMovement : MonoBehaviour
     public float crouchSpeed = 3.5f;
     public float slideSpeed = 30.0f;
     public float wallRunSpeed = 8.5f;
+    public float dashSpeed = 20.0f;
+    public float swingSpeed;
+    [Space(10)]
 
     [SerializeField] private float playerHeight = 2.0f;
     [SerializeField] private float groundDrag = 4.0f;
     [SerializeField] private float speedIncreaseMultiplier = 1.5f;
     [SerializeField] private float slopeIncreaseMultiplier = 2.5f;
+    [SerializeField] private float dashIncreaseMultiplier = 50.0f;
 
     [SerializeField] private float jumpForce = 18.0f;
     [SerializeField] private float jumpCooldown = 0.25f;
@@ -52,7 +58,7 @@ public class PlayerMovement : MonoBehaviour
     [Space(10)]
 
     public MovementState state;
-    public enum MovementState { grounded, airborne, crouching, sliding, wallrunning }
+    public enum MovementState { grounded, swinging, airborne, crouching, sliding, wallrunning, dashing }
 
     // Called before Start() 
     private void Awake()
@@ -82,8 +88,8 @@ public class PlayerMovement : MonoBehaviour
         LimitVelocity();
 
         // Update drag based on whether or not the player is grounded
-        if (IsGrounded()) { _rigidbody.drag = groundDrag; }
-        else if (!IsGrounded()) { _rigidbody.drag = 0.0f; }
+        if (state == MovementState.grounded || state == MovementState.crouching || state == MovementState.sliding) { _rigidbody.drag = groundDrag; }
+        else { _rigidbody.drag = 0.0f; }
     }
 
     // Called every fixed framerate update 
@@ -126,16 +132,21 @@ public class PlayerMovement : MonoBehaviour
 
     private void StateHandler()
     {
-        // Determine the state of the player based on if they're grounded or not
-        if (IsGrounded())
+        // Update the state if is swinging
+        if (isSwinging)
         {
-            state = MovementState.grounded;
+            state = MovementState.swinging;
         }
-        else if (!IsGrounded())
+        // Update the state if is dashing
+        if (isDashing)
         {
-            state = MovementState.airborne;
+            state = MovementState.dashing;
         }
-
+        // Update the state if is wallrunning
+        else if (isWallrunnning)
+        {
+            state = MovementState.wallrunning;
+        }
         // Update the state if is sliding
         else if (isSliding)
         {
@@ -145,16 +156,22 @@ public class PlayerMovement : MonoBehaviour
             if (OnSlope() && _rigidbody.velocity.y < 0.1f) { desiredMovementSpeed = slideSpeed; }
             else { desiredMovementSpeed = baseSpeed; }
         }
-        // Update the state if is wallrunning
-        else if (isWallrunnning)
-        {
-            state = MovementState.wallrunning;
-        }
+
         // Determine if crouching, if so appropriately update the state
         else if (Input.GetKey(KeyCode.LeftControl))
         {
             isCrouching = true;
             state = MovementState.crouching;
+        }
+
+        // Determine the state of the player based on if they're grounded or not
+        else if (IsGrounded())
+        {
+            state = MovementState.grounded;
+        }
+        else if (!IsGrounded())
+        {
+            state = MovementState.airborne;
         }
 
         // Check if the desired move speed has changed drastically
@@ -175,12 +192,15 @@ public class PlayerMovement : MonoBehaviour
 
     private void MovePlayer()
     {
+        if (state == MovementState.dashing) { return; }
+        if (state == MovementState.swinging) { return; }
+
         // Calcuate movement direction vector, allowing movement to always be relative to the rotation of the orientation object
         movementDirection = (orientation.forward * verticalInput) + (orientation.right * horizontalInput);
         movementDirection.Normalize();
 
         // Determine the correct movement speed
-        desiredMovementSpeed = isWallrunnning ? wallRunSpeed : isCrouching ? crouchSpeed : baseSpeed;
+        desiredMovementSpeed = isSwinging ? swingSpeed : isDashing ? dashSpeed : isWallrunnning ? wallRunSpeed : isCrouching ? crouchSpeed : baseSpeed;
 
         if (OnSlope() && !exitingSlope)
         {
@@ -254,7 +274,12 @@ public class PlayerMovement : MonoBehaviour
                 // Increase time, multiply it based on the angle increase and slope increase to increase acceleration
                 time += Time.deltaTime * speedIncreaseMultiplier * slopeIncreaseMultiplier * slopeAngleIncrease;
             }
-            else if (!OnSlope())
+            else if (!OnSlope() && isDashing)
+            {
+                // Increase the time multilpied by the dash speed multilpier
+                time += Time.deltaTime * dashIncreaseMultiplier;
+            }
+            else if (!OnSlope() && !isDashing)
             {
                 // Increase the time 
                 time += Time.deltaTime * speedIncreaseMultiplier;

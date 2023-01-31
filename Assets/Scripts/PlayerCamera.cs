@@ -14,6 +14,7 @@ public class PlayerCamera : MonoBehaviour
     // Serialized float values that control camera sensitivity 
     [SerializeField] private float sensitivityX = 200.0f;
     [SerializeField] private float sensitivityY = 200.0f;
+    public float originalFOV;
     [Space(10)]
 
     [SerializeField] private Transform orientation;
@@ -28,6 +29,9 @@ public class PlayerCamera : MonoBehaviour
     // Called on the first frame before Update()
     private void Start()
     {
+        // Get the original FOV
+        originalFOV = this.GetComponent<Camera>().fieldOfView;
+
         // Lock the position of the cursor and hide it
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;

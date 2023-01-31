@@ -157,7 +157,7 @@ public class PlayerWallRunning : MonoBehaviour
         PlayerMovement.instance.isWallrunnning = false;
 
         // Redset camera FOV and tilt effects
-        PlayerCamera.instance.CameraFovChange(80.0f);
+        PlayerCamera.instance.CameraFovChange(PlayerCamera.instance.originalFOV);
         PlayerCamera.instance.CameraTilt(0.0f);
     }
 
