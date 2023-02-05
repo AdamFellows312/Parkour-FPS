@@ -152,14 +152,14 @@ public class WeaponHolder : MonoBehaviour
         }
     }
 
-    public void TryReload()
+    public void TryReload(float reloadDuration)
     {
         if (isReloading) return;
 
         Debug.Log("Reload");
 
         isReloading = true;
-        StartCoroutine(Reload(360.0f, reloadSpinDuration));
+        StartCoroutine(Reload(360.0f, reloadDuration));
     }
 
     private IEnumerator Reload(float targetValue, float duration)
